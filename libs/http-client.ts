@@ -1,16 +1,20 @@
 
-// 定义请求拦截器类型
+// --- 类型定义 ---
+
+// 扩展 RequestInit 以包含自定义选项
+export interface HttpClientRequestInit extends RequestInit {
+  skipAuth?: boolean; // 可选标志，用于跳过认证
+}
+
+// 定义拦截器类型
 type RequestInterceptor = (
-  config: RequestInit
-) => RequestInit | Promise<RequestInit>;
-
-// 定义响应拦截器类型
+  config: HttpClientRequestInit
+) => HttpClientRequestInit | Promise<HttpClientRequestInit>;
 type ResponseInterceptor = (response: Response) => Response | Promise<Response>;
-
-// 定义错误拦截器类型
 type ErrorInterceptor = (error: any) => any;
 
-// 拦截器管理器
+// --- 拦截器管理器 ---
+
 const interceptors: {
   request: RequestInterceptor[];
   response: ResponseInterceptor[];
@@ -21,40 +25,30 @@ const interceptors: {
   error: [],
 };
 
-/**
- * 添加请求拦截器
- * @param interceptor - 请求拦截器函数
- */
 export function addRequestInterceptor(interceptor: RequestInterceptor) {
   interceptors.request.push(interceptor);
 }
 
-/**
- * 添加响应拦截器
- * @param interceptor - 响应拦截器函数
- */
 export function addResponseInterceptor(interceptor: ResponseInterceptor) {
   interceptors.response.push(interceptor);
 }
 
-/**
- * 添加错误拦截器
- * @param interceptor - 错误拦截器函数
- */
 export function addErrorInterceptor(interceptor: ErrorInterceptor) {
   interceptors.error.push(interceptor);
 }
 
+// --- 核心 HTTP 客户端 ---
+
 /**
- * 封装的 fetch 函数
+ * 封装的 fetch 函数，支持拦截器和泛型
  * @param url - 请求的 URL
- * @param options - fetch 的配置选项
- * @returns - 返回一个 Promise，解析为响应的 JSON 数据
+ * @param options - 自定义的请求配置
+ * @returns - 返回一个 Promise，解析为类型化的响应数据
  */
-export async function httpClient(
+async function httpClient<T>(
   url: string,
-  options: RequestInit = {}
-): Promise<any> {
+  options: HttpClientRequestInit = {}
+): Promise<T> {
   let config = options;
 
   // 应用请求拦截器
@@ -74,12 +68,81 @@ export async function httpClient(
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return await response.json();
+    // 假设响应是 JSON 并解析
+    return (await response.json()) as T;
   } catch (error) {
     // 应用错误拦截器
+    let processedError = error;
     for (const interceptor of interceptors.error) {
-      error = await interceptor(error);
+      processedError = await interceptor(processedError);
     }
-    throw error;
+    throw processedError;
   }
 }
+
+// --- 便捷方法 ---
+
+/**
+ * 发起 GET 请求
+ * @param url - 请求的 URL
+ * @param options - 自定义的请求配置
+ */
+function get<T>(url: string, options?: HttpClientRequestInit) {
+  return httpClient<T>(url, { ...options, method: "GET" });
+}
+
+/**
+ * 发起 POST 请求
+ * @param url - 请求的 URL
+ * @param body - 请求体
+ * @param options - 自定义的请求配置
+ */
+function post<T>(url: string, body: any, options?: HttpClientRequestInit) {
+  return httpClient<T>(url, {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * 发起 PUT 请求
+ * @param url - 请求的 URL
+ * @param body - 请求体
+ * @param options - 自定义的请求配置
+ */
+function put<T>(url: string, body: any, options?: HttpClientRequestInit) {
+  return httpClient<T>(url, {
+    ...options,
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * 发起 DELETE 请求
+ * @param url - 请求的 URL
+ * @param options - 自定义的请求配置
+ */
+function del<T>(url: string, options?: HttpClientRequestInit) {
+  return httpClient<T>(url, { ...options, method: "DELETE" });
+}
+
+// 导出 http 对象，其中包含所有便捷方法
+export const http = {
+  get,
+  post,
+  put,
+  delete: del,
+  addRequestInterceptor,
+  addResponseInterceptor,
+  addErrorInterceptor,
+};
