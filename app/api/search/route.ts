@@ -1,6 +1,6 @@
 
 import { NextResponse } from "next/server";
-import { api } from "@/utils/api"; // 使用 tsconfig.json 中定义的路径别名
+import { api } from "../../../utils/api";
 
 // 定义我们期望从外部 API 获取的数据类型
 interface Post {
@@ -22,6 +22,8 @@ export async function GET(request: Request) {
       "https://jsonplaceholder.typicode.com/posts?_limit=5",
       { skipAuth: true }
     );
+
+    console.log(posts,'###')
 
     // 将获取到的数据作为 JSON 响应返回
     return NextResponse.json(posts);

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "@/libs/fetch-interceptor"; // 在这里导入 fetch 拦截器
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
