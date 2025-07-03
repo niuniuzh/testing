@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from 'swr';
+import useSWRMutation from 'swr/mutation'; // Added import
 import Image from "next/image";
 import { NotFoundError, ServerError } from '@/libs/errors';
 
@@ -14,10 +15,29 @@ interface Post {
 // The API endpoint we want to fetch
 const API_URL = "/api/search";
 
+// A mutation function that always throws an error
+async function failingMutation(url: string, { arg }: { arg: any }) {
+  console.log(`Attempting mutation for ${url} with arg:`, arg);
+  throw new Error('This is an intentional error from failingMutation!');
+}
+
 export default function Home() {
   // Use the SWR hook to fetch data. 
   // The fetcher is already configured in SWRProvider.
   const { data: posts, error, isLoading } = useSWR<Post[]>(API_URL);
+
+  // Use useSWRMutation for the failing test
+  const { trigger, isMutating, error: mutationError } = useSWRMutation('/api/failing-endpoint', failingMutation);
+
+  const handleFailingMutation = async () => {
+    try {
+      await trigger({ someData: 'test' });
+    } catch (e) {
+      // This catch block will only be hit if the error is not handled by the global onError.
+      // In this case, the global onError should handle it first.
+      console.error('Error caught in component (should not happen if global onError works):', e);
+    }
+  };
 
   // --- Render Logic ---
   const renderContent = () => {
@@ -66,6 +86,20 @@ export default function Home() {
         <div className="w-full mt-8">
           <h1 className="text-2xl font-bold text-center mb-4">SWR API Results</h1>
           {renderContent()}
+        </div>
+        {/* Added for testing useSWRMutation error interception */}
+        <div className="w-full mt-8">
+          <h2 className="text-xl font-bold text-center mb-4">Test SWR Mutation Error</h2>
+          <p className="text-center">Click the button below to trigger a mutation that will intentionally fail.</p>
+          <p className="text-center">Check your browser's console for the global SWR error log from `SWRProvider.tsx`.</p>
+          <button 
+            onClick={handleFailingMutation} 
+            disabled={isMutating}
+            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
+          >
+            {isMutating ? 'Mutating...' : 'Trigger Failing Mutation'}
+          </button>
+          {mutationError && <p style={{ color: 'red' }} className="text-center mt-2">Mutation Error (local): {mutationError.message}</p>}
         </div>
       </main>
       <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center mt-8">
