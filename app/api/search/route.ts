@@ -65,6 +65,10 @@ export async function GET(request: Request) {
         { status: 404 }
       );
     }
+     return NextResponse.json(
+      { message: "查询数据库时发生内部错误。" },
+      { status: 500 }
+    );
 
     // 成功：返回查询结果
     return NextResponse.json(results);

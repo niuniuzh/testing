@@ -8,6 +8,8 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+import { SWRProvider } from "@/components/SWRProvider";
+
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -28,7 +30,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <SWRProvider>{children}</SWRProvider>
         <GlobalFetchInterceptor />
       </body>
     </html>
