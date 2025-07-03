@@ -3,7 +3,7 @@
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation'; // Added import
 import Image from "next/image";
-import { NotFoundError, ServerError } from '@/libs/errors';
+import { NotFoundError, ServerError, AuthenticationError } from '@/libs/errors';
 
 // Define the data structure for a Post
 interface Post {

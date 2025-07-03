@@ -2,6 +2,7 @@
 
 import { SWRConfig } from 'swr';
 import { AuthenticationError } from '@/libs/errors';
+import { useGlobalError } from './GlobalErrorDisplay'; // Import useGlobalError
 
 /**
  * The default fetcher for SWR.
@@ -22,12 +23,15 @@ const fetcher = async (url: string) => {
  * - Implements global error handling, such as redirecting on auth errors.
  */
 export const SWRProvider = ({ children }: { children: React.ReactNode }) => {
+  const { setError } = useGlobalError(); // Get setError from context
+
   return (
     <SWRConfig
       value={{
         fetcher,
         onError: (error, key) => {
           console.error(`SWR Global Error for key '${key}':`, error);
+          setError(error); // Set the global error
 
           // Example: If an auth error occurs anywhere, redirect to login
           if (error instanceof AuthenticationError) {
