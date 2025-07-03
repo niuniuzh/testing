@@ -11,7 +11,7 @@ if (typeof window !== 'undefined') {
     try {
       // 3. 调用原始的 fetch，并等待响应
       const response = await originalFetch(...args);
-console.log('response',response);
+      console.log('response',response);
       // 4. 检查响应是否成功，如果不成功，则主动抛出错误
       // 这使得 .catch() 块可以捕获到 HTTP 错误 (如 404, 500)
       if (!response.ok) {

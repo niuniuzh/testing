@@ -1,37 +1,79 @@
-
 import { NextResponse } from "next/server";
-import { api } from "../../../utils/api";
 
-// 定义我们期望从外部 API 获取的数据类型
-interface Post {
-  userId: number;
-  id: number;
-  title: string;
-  body: string;
+// --- 模拟数据库和查询 ---
+
+// 1. 定义数据结构和模拟数据
+interface Product {
+  id: string;
+  name: string;
+  category: string;
 }
+
+const mockProducts: Product[] = [
+  { id: "p1", name: "Laptop Pro", category: "Electronics" },
+  { id: "p2", name: "Wireless Mouse", category: "Electronics" },
+  { id: "p3", name: "Coffee Mug", category: "Kitchenware" },
+  { id: "p4", name: "Standing Desk", category: "Furniture" },
+];
+
+// 2. 模拟数据库查询函数
+const searchProductsInDB = async (
+  query: string | null
+): Promise<Product[]> => {
+  // 模拟 300ms 的数据库延迟
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
+  // 模拟一个可预测的失败场景，用于测试
+  if (query === "fail") {
+    throw new Error("数据库连接超时");
+  }
+
+  // 如果没有查询参数，返回所有产品
+  if (!query) {
+    return mockProducts;
+  }
+
+  // 如果有查询参数，则过滤产品名称
+  const lowerCaseQuery = query.toLowerCase();
+  const results = mockProducts.filter((product) =>
+    product.name.toLowerCase().includes(lowerCaseQuery)
+  );
+
+  return results;
+};
+
+// --- API 路由处理程序 ---
 
 /**
  * 处理对 /api/search 的 GET 请求
  * @param request - Next.js 传入的请求对象
+ * - ?q=laptop  -> 成功，返回匹配项
+ * - ?q=fail    -> 失败，返回 500 错误
+ * - (无参数)    -> 成功，返回所有项目
  */
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get("q");
+
   try {
-    // 使用我们预先配置的 api 客户端来获取外部数据
-    // 由于这是一个公共的搜索接口，我们跳过认证
-    const posts = await api.get<Post[]>(
-      "https://jsonplaceholder.typicode.com/posts?_limit=5",
-      { skipAuth: true }
-    );
+    console.log(`API Route: 正在数据库中搜索 '${query || "all"}'...`);
+    const results = await searchProductsInDB(query);
 
-    console.log(posts,'###')
+    if (results.length === 0) {
+      return NextResponse.json(
+        { message: `未找到与 '${query}' 相关的产品。` },
+        { status: 404 }
+      );
+    }
 
-    // 将获取到的数据作为 JSON 响应返回
-    return NextResponse.json(posts);
+    // 成功：返回查询结果
+    return NextResponse.json(results);
+
   } catch (error: any) {
-    // 如果发生错误，返回一个 500 状态和错误信息
-    console.error("API Route Error:", error.message);
+    // 失败：记录错误并返回 500 状态
+    console.error("API Route 数据库错误:", error.message);
     return NextResponse.json(
-      { message: "获取外部数据时发生错误。" },
+      { message: "查询数据库时发生内部错误。", error: error.message },
       { status: 500 }
     );
   }
