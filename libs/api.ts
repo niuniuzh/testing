@@ -1,40 +1,45 @@
-import { apiClient } from './my-fetch';
+import { apiClient, ApiResponse } from './my-fetch';
 
 
-export interface ApiResponse {
-  message: string;
-  data?: any;
-}
+export const getRequest = <T>(
+  key: string | [string, Record<string, string | number | boolean | undefined | null>]
+): Promise<ApiResponse<T>> => {
+  let url: string;
+  let params: Record<string, string | number | boolean | undefined | null> | undefined;
 
-
-export const getRequest = <T,>(key: string | [string, Record<string, any>]): Promise<T> => {
-  const [url, params] = Array.isArray(key) ? key : [key, null];
-  
-  if (params) {
-    const query = new URLSearchParams(params).toString();
-    const fullUrl = `${url}?${query}`;
-    return apiClient.fetch<T>(fullUrl);
+  if (Array.isArray(key)) {
+    [url, params] = key;
+  } else {
+    url = key;
+    params = undefined;
   }
-  
-  return apiClient.fetch<T>(url);
+
+  if (params && Object.keys(params).length > 0) {
+    const query = new URLSearchParams(
+      Object.entries(params)
+        .filter(([_, v]) => v !== undefined && v !== null)
+        .map(([k, v]) => [k, String(v)])
+    ).toString();
+    const fullUrl = query ? `${url}?${query}` : url;
+    return apiClient.fetch<ApiResponse<T>>(fullUrl);
+  }
+
+  return apiClient.fetch<ApiResponse<T>>(url);
 };
 
 
-const createMutator = 
-  (method: 'POST' | 'PUT' | 'DELETE') => 
-  <T, R = ApiResponse>(url: string, { arg }: { arg: T }): Promise<R> => {
-    return apiClient.fetch<R>(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(arg),
-    });
-  };
+const createMutator =
+  (method: 'POST' | 'PUT' | 'DELETE') =>
+    <T>(url: string, { arg }: { arg: T }): Promise<ApiResponse<T>> => {
+      return apiClient.fetch<ApiResponse<T>>(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(arg),
+      });
+    };
 
 export const postRequest = createMutator('POST');
-
-
 export const putRequest = createMutator('PUT');
-
 export const deleteRequest = createMutator('DELETE');

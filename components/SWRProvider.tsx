@@ -1,13 +1,13 @@
 'use client';
 
 import { SWRConfig } from 'swr';
-import { myFetchClient } from '@/libs/my-fetch';
+import { getRequest } from '@/libs/api';
 import { AuthenticationError, ForbiddenError } from '@/libs/errors'; // Import ForbiddenError
 import { useGlobalError } from './GlobalErrorDisplay';
 
 const fetcher = async (url: string) => {
-  const res = await myFetchClient(url);
-  return res.json();
+  const res = await getRequest<{user:string}>(url);
+  return res;
 };
 
 export const SWRProvider = ({ children }: { children: React.ReactNode }) => {

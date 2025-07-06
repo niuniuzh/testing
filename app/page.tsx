@@ -24,9 +24,9 @@ export default function Home() {
   );
 
   // 2. useSWRMutation with the imported mutators
-  const { trigger: createTrigger, isMutating: isCreating } = useSWRMutation('/api/search', postRequest);
-  const { trigger: updateTrigger, isMutating: isUpdating } = useSWRMutation('/api/search', putRequest);
-  const { trigger: deleteTrigger, isMutating: isDeleting } = useSWRMutation('/api/search', deleteRequest);
+  const { trigger: createTrigger, isMutating: isCreating } = useSWRMutation<Product>('/api/search', postRequest);
+  const { trigger: updateTrigger, isMutating: isUpdating } = useSWRMutation<Product>('/api/search', putRequest);
+  const { trigger: deleteTrigger, isMutating: isDeleting } = useSWRMutation<{user:string}>('/api/search', deleteRequest);
 
   // --- Render Logic (Unchanged) ---
 
@@ -84,7 +84,22 @@ export default function Home() {
             </button>
             {/* DELETE */}
             <button 
-              onClick={() => deleteTrigger({ id: 'p2' })} 
+              onClick={() => {deleteTrigger({ id: 'p2' });
+            await deleteTrigger<{user:string}>({ id: 'p2'}).then((res) => {
+              if (res.code === 200) {
+                console.log('Product deleted successfully');
+              } else {
+                console.error('Failed to delete product:', res.message);
+              }
+              await postRequest<Product>('/api/search', { name: 'New Product' }).then((res) => {
+                if (res.code === 200) {
+                  console.log('Product created successfully');
+                  res.data.category = 'Electronics'; // Example of modifying the response data
+                } else {
+                  console.error('Failed to create product:', res.message);
+                }
+              });
+            }} 
               disabled={isDeleting}
               className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
             >

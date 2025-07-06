@@ -1,3 +1,5 @@
+// libs/errors/codes.ts
+
 /**
  * A structured set of HTTP status codes for consistency.
  */
@@ -21,7 +23,7 @@ export const ERROR_CODES = {
   FORBIDDEN_ERROR: 'FORBIDDEN_ERROR',           // 403
   NOT_FOUND_ERROR: 'NOT_FOUND_ERROR',           // 404
   VALIDATION_ERROR: 'VALIDATION_ERROR',         // 422, 400
-  
+
   // --- Server Errors (500-599) ---
   INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR', // 500
   SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',     // 503
@@ -39,15 +41,23 @@ export type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];
 export class HttpError extends Error {
   status: number;
   code: ErrorCode;
-  data: any;
+  data?: unknown;
+  cause?: Error;
 
-  constructor(message: string, status: number, code: ErrorCode, data: any) {
+  constructor(message: string, status: number, code: ErrorCode, data?: unknown, cause?: Error) {
     super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
     this.name = 'HttpError';
     this.status = status;
     this.code = code;
     this.data = data;
+    this.cause = cause;
   }
+}
+
+// 类型守卫
+export function isHttpError(error: unknown): error is HttpError {
+  return error instanceof HttpError;
 }
 
 // --- Specific Error Classes ---
@@ -74,9 +84,8 @@ export class NotFoundError extends HttpError {
 }
 
 export class ValidationError extends HttpError {
-  constructor(message = "Input validation failed", data: any) {
-    // Can be used for both 400 and 422 status codes
-    super(message, HTTP_STATUS_CODES.UNPROCESSABLE_ENTITY, ERROR_CODES.VALIDATION_ERROR, data);
+  constructor(message = "Input validation failed", data?: unknown, status: number = HTTP_STATUS_CODES.UNPROCESSABLE_ENTITY) {
+    super(message, status, ERROR_CODES.VALIDATION_ERROR, data);
     this.name = 'ValidationError';
   }
 }

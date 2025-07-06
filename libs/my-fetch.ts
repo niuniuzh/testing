@@ -1,13 +1,13 @@
 import { deepmerge } from "deepmerge-ts";
 import {
-  HttpError,
   AuthenticationError,
   ForbiddenError,
+  HTTP_STATUS_CODES,
+  HttpError,
   NotFoundError,
-  ValidationError,
   ServerError,
   ServiceUnavailableError,
-  HTTP_STATUS_CODES,
+  ValidationError,
 } from "./errors";
 
 
@@ -35,6 +35,8 @@ export interface ApiClientInstance {
   addHook(type: 'beforeRequest', hook: BeforeRequestHook): void;
   addHook(type: 'afterResponse', hook: AfterResponseHook): void;
 }
+
+export type ApiResponse<T = any> = { code: number; message: string; data: T };
 
 
 const handleResponse = async (response: Response) => {
@@ -99,16 +101,21 @@ export const createApiClient = (
 
     const response = await handleResponse(rawResponse);
 
-    const data = await response.text();
-    if (!data) {
-      return undefined as T;
-    }
-
-    try {
-      return JSON.parse(data) as T;
-    } catch (error) {
-      console.error("apiClient: Failed to parse JSON response.", error);
-      throw new Error("Invalid JSON response from server.");
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      // JSON 响应
+      if (response.status === 204) return undefined as T; // No Content
+      try {
+        return (await response.json()) as T;
+      } catch (error) {
+        console.error("apiClient: Failed to parse JSON response.", error);
+        throw new Error("Invalid JSON response from server.");
+      }
+    } else {
+      // 其他类型（如 text/plain）
+      const text = await response.text();
+      if (!text) return undefined as T;
+      return text as T;
     }
   };
 
