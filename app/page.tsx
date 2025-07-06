@@ -3,61 +3,42 @@
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import Image from "next/image";
-import { NotFoundError, ServerError, ForbiddenError, ERROR_CODES } from '@/libs/errors';
-import { myFetchClient } from '@/libs/my-fetch';
+import { getRequest, postRequest, putRequest, deleteRequest } from '@/libs/api';
 
-interface Post {
-  id: number;
-  title: string;
-  body: string;
-}
-
-const API_URL = "/api/search";
-
-// Mutation function to trigger a 500 server error
-async function triggerServerError(url: string) {
-  await myFetchClient(`${url}?q=fail`);
-}
-
-// Mutation function to trigger a 403 forbidden error
-async function triggerForbiddenError(url: string) {
-  await myFetchClient(`${url}?q=forbidden`);
+// --- Type Definitions ---
+// Page-specific types can remain here.
+interface Product {
+  id: string;
+  name: string;
+  category: string;
 }
 
 export default function Home() {
-  const { data: posts, error, isLoading } = useSWR<Post[]>(API_URL);
+  // --- SWR Hooks ---
+  // The component now uses the clean, imported functions from the API layer.
 
-  const { trigger: triggerServer, isMutating: isMutatingServer, error: serverError } = useSWRMutation('/api/search', triggerServerError);
-  const { trigger: triggerForbidden, isMutating: isMutatingForbidden, error: forbiddenError } = useSWRMutation('/api/search', triggerForbiddenError);
+  // 1. useSWR for GET requests, passing parameters as an object in the key array.
+  const { data: products, error, isLoading } = useSWR<Product[]>(
+    ['/api/search', { name: 'Laptop' }], // The key is now an array: [url, params]
+    getRequest
+  );
 
-  const renderContent = () => {
-    if (isLoading) {
-      return <p className="text-center">Loading with SWR...</p>;
-    }
+  // 2. useSWRMutation with the imported mutators
+  const { trigger: createTrigger, isMutating: isCreating } = useSWRMutation('/api/search', postRequest);
+  const { trigger: updateTrigger, isMutating: isUpdating } = useSWRMutation('/api/search', putRequest);
+  const { trigger: deleteTrigger, isMutating: isDeleting } = useSWRMutation('/api/search', deleteRequest);
 
-    if (error) {
-      // Handle our custom, typed errors with error codes
-      switch (error.code) {
-        case ERROR_CODES.NOT_FOUND_ERROR:
-          return <p className="text-center text-orange-500">No posts found (404).</p>;
-        case ERROR_CODES.INTERNAL_SERVER_ERROR:
-          return <p className="text-center text-red-500">Server error, please try again later (500).</p>;
-        default:
-          return <p className="text-center text-red-500">An unexpected error occurred: {error.message}</p>;
-      }
-    }
+  // --- Render Logic (Unchanged) ---
 
-    if (!posts || posts.length === 0) {
-      return <p className="text-center">No posts available.</p>;
-    }
+  const renderProductList = () => {
+    if (isLoading) return <p className="text-center">Loading products...</p>;
+    if (error) return <p className="text-center text-red-500">Error loading products: {error.message}</p>;
+    if (!products) return <p className="text-center">No products found.</p>;
 
     return (
-      <ul className="list-disc list-inside space-y-4">
-        {posts.map((post) => (
-          <li key={post.id} className="border p-4 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold">{post.title}</h2>
-            <p className="text-gray-400 mt-2">{post.body}</p>
-          </li>
+      <ul className="list-disc list-inside space-y-2">
+        {products.map((product) => (
+          <li key={product.id}>{product.name} ({product.category})</li>
         ))}
       </ul>
     );
@@ -74,36 +55,44 @@ export default function Home() {
           height={38}
           priority
         />
-        <div className="w-full mt-8">
-          <h1 className="text-2xl font-bold text-center mb-4">SWR API Results</h1>
-          {renderContent()}
+        
+        {/* GET Request Example */}
+        <div className="w-full mt-8 border p-4 rounded-lg">
+          <h1 className="text-2xl font-bold text-center mb-4">useSWR (GET) Example</h1>
+          {renderProductList()}
         </div>
-        <div className="w-full mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="border p-4 rounded-lg">
-            <h2 className="text-xl font-bold text-center mb-4">Test Server Error (500)</h2>
-            <p className="text-center">This button will trigger a mutation that results in a 500 error.</p>
+
+        {/* Mutation Examples */}
+        <div className="w-full mt-8 border p-4 rounded-lg">
+          <h1 className="text-2xl font-bold text-center mb-4">useSWRMutation Examples (Generic Mutator Pattern)</h1>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* POST */}
             <button 
-              onClick={() => triggerServer()} 
-              disabled={isMutatingServer}
-              className="mt-4 w-full px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
+              onClick={() => createTrigger({ name: 'New Awesome Gadget' })} 
+              disabled={isCreating}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
             >
-              {isMutatingServer ? 'Loading...' : 'Trigger 500 Error'}
+              {isCreating ? 'Creating...' : 'Create Product (POST)'}
             </button>
-            {serverError && <p style={{ color: 'red' }} className="text-center mt-2">Error: {serverError.message}</p>}
-          </div>
-          <div className="border p-4 rounded-lg">
-            <h2 className="text-xl font-bold text-center mb-4">Test Forbidden Error (403)</h2>
-            <p className="text-center">This button will trigger a mutation that results in a 403 error.</p>
+            {/* PUT */}
             <button 
-              onClick={() => triggerForbidden()} 
-              disabled={isMutatingForbidden}
-              className="mt-4 w-full px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 disabled:opacity-50"
+              onClick={() => updateTrigger({ id: 'p1', name: 'Updated Laptop Pro' })} 
+              disabled={isUpdating}
+              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
             >
-              {isMutatingForbidden ? 'Loading...' : 'Trigger 403 Error'}
+              {isUpdating ? 'Updating...' : 'Update Product (PUT)'}
             </button>
-            {forbiddenError && <p style={{ color: 'red' }} className="text-center mt-2">Error: {forbiddenError.message}</p>}
+            {/* DELETE */}
+            <button 
+              onClick={() => deleteTrigger({ id: 'p2' })} 
+              disabled={isDeleting}
+              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Product (DELETE)'}
+            </button>
           </div>
         </div>
+
       </main>
       <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center mt-8">
         {/* Footer links... */}

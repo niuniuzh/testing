@@ -56,7 +56,7 @@ export async function GET(request: Request) {
   const query = searchParams.get("q");
 
   try {
-    console.log(`API Route: 正在数据库中搜索 '${query || "all"}'...`);
+    console.log(`API Route (GET): 正在数据库中搜索 '${query || "all"}'...`);
     const results = await searchProductsInDB(query);
 
     if (results.length === 0) {
@@ -76,5 +76,44 @@ export async function GET(request: Request) {
       { message: "查询数据库时发生内部错误。", error: error.message },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * 处理对 /api/search 的 POST 请求
+ */
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    console.log("API Route (POST): Received body:", body);
+    return NextResponse.json({ message: "Product created successfully", data: body });
+  } catch (error: any) {
+    return NextResponse.json({ message: "Failed to parse request body.", error: error.message }, { status: 400 });
+  }
+}
+
+/**
+ * 处理对 /api/search 的 PUT 请求
+ */
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    console.log("API Route (PUT): Received body:", body);
+    return NextResponse.json({ message: "Product updated successfully", data: body });
+  } catch (error: any) {
+    return NextResponse.json({ message: "Failed to parse request body.", error: error.message }, { status: 400 });
+  }
+}
+
+/**
+ * 处理对 /api/search 的 DELETE 请求
+ */
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    console.log("API Route (DELETE): Received body:", body);
+    return NextResponse.json({ message: "Product deleted successfully", data: body });
+  } catch (error: any) {
+    return NextResponse.json({ message: "Failed to parse request body.", error: error.message }, { status: 400 });
   }
 }

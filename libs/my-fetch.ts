@@ -10,7 +10,6 @@ import {
   HTTP_STATUS_CODES,
 } from "./errors";
 
-// --- Type Definitions for Hooks, Options, and the Client Instance ---
 
 export type BeforeRequestHook = (
   options: MyFetchRequestOptions
@@ -25,21 +24,18 @@ export interface FetchHooks {
 
 export interface MyFetchOptions extends RequestInit {
   hooks?: FetchHooks;
-  json?: unknown;
 }
 
-// The options object passed to the fetch method, including the URL.
 export interface MyFetchRequestOptions extends MyFetchOptions {
   url: RequestInfo;
 }
 
-export interface MyFetchClientInstance {
+export interface ApiClientInstance {
   fetch: <T = any>(url: RequestInfo, options?: MyFetchOptions) => Promise<T>;
   addHook(type: 'beforeRequest', hook: BeforeRequestHook): void;
   addHook(type: 'afterResponse', hook: AfterResponseHook): void;
 }
 
-// --- Core Fetch Logic ---
 
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
@@ -70,11 +66,10 @@ const handleResponse = async (response: Response) => {
   return response;
 };
 
-// --- Factory for Creating a Fetch Client Instance ---
 
-export const createFetchClient = (
+export const createApiClient = (
   defaultOptions: MyFetchOptions = {}
-): MyFetchClientInstance => {
+): ApiClientInstance => {
   const instanceConfig = { ...defaultOptions };
 
   const fetcher = async <T = any>(
@@ -86,15 +81,7 @@ export const createFetchClient = (
       { url, ...perRequestOptions }
     );
 
-    const { hooks = {}, json, url: finalUrl, ...fetchOptions } = mergedOptions;
-
-    if (json !== undefined) {
-      fetchOptions.body = JSON.stringify(json);
-      fetchOptions.headers = {
-        "Content-Type": "application/json",
-        ...fetchOptions.headers,
-      };
-    }
+    const { hooks = {}, ...fetchOptions } = mergedOptions;
 
     if (hooks.beforeRequest) {
       for (const hook of hooks.beforeRequest) {
@@ -120,7 +107,7 @@ export const createFetchClient = (
     try {
       return JSON.parse(data) as T;
     } catch (error) {
-      console.error("myFetch: Failed to parse JSON response.", error);
+      console.error("apiClient: Failed to parse JSON response.", error);
       throw new Error("Invalid JSON response from server.");
     }
   };
@@ -144,14 +131,5 @@ export const createFetchClient = (
   return { fetch: fetcher, addHook };
 };
 
-// --- Pre-configured Instances ---
+export const apiClient = createApiClient();
 
-export const myFetchClient = createFetchClient();
-export const myFetchServer = createFetchClient();
-
-myFetchServer.addHook('beforeRequest', (options) => {
-  if (typeof options.url === "string" && options.url.startsWith("/api")) {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
-    options.url = `${baseUrl}${options.url}`;
-  }
-});
