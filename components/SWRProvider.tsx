@@ -1,29 +1,17 @@
 'use client';
 
 import { SWRConfig } from 'swr';
-import { AuthenticationError } from '@/libs/errors';
-import { useGlobalError } from './GlobalErrorDisplay'; // Import useGlobalError
+import { myFetchClient } from '@/libs/my-fetch';
+import { AuthenticationError, ForbiddenError } from '@/libs/errors'; // Import ForbiddenError
+import { useGlobalError } from './GlobalErrorDisplay';
 
-/**
- * The default fetcher for SWR.
- * It uses the globally patched `fetch` function, so it automatically gets
- * all our custom error handling and interceptor logic.
- * It expects the response to be JSON and parses it.
- */
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  // The global interceptor already throws our custom errors for non-ok responses,
-  // so we don't need to check for `res.ok` here.
+  const res = await myFetchClient(url);
   return res.json();
 };
 
-/**
- * This component provides a global SWR configuration.
- * - Sets the default fetcher to our global, patched fetch.
- * - Implements global error handling, such as redirecting on auth errors.
- */
 export const SWRProvider = ({ children }: { children: React.ReactNode }) => {
-  const { setError } = useGlobalError(); // Get setError from context
+  const { setError } = useGlobalError();
 
   return (
     <SWRConfig
@@ -33,9 +21,11 @@ export const SWRProvider = ({ children }: { children: React.ReactNode }) => {
           console.error(`SWR Global Error for key '${key}':`, error);
           setError(error); // Set the global error
 
-          // Example: If an auth error occurs anywhere, redirect to login
+          // Handle specific errors globally
           if (error instanceof AuthenticationError) {
             alert('Authentication failed! You would be redirected to login.');
+          } else if (error instanceof ForbiddenError) {
+            alert('Access Denied: You do not have permission to perform this action.');
           }
         },
       }}
